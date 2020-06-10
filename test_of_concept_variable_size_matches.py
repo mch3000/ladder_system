@@ -13,12 +13,6 @@ def all_matchups_checks(teams,costs,match_size=2):
     if len(teams)%match_size != 0:
         print('Number of teams must be a multiple of match_size - add a "bye" team if needed')
         return None
-    if len(teams) != len(costs):
-        print('Costs matrix not the same size as number of teams')
-        return None
-    if len(teams) != len(costs[0]):
-        print('Costs matrix not the same size as number of teams - ER2')
-        return None
     
     return all_matchups(teams,costs,match_size)
 
@@ -180,7 +174,7 @@ def best_matchups(teams,costs,reset_state,best_cost,best_state,match_size):
     
     # Create the generator function, that will be called later:
     #match_gen = all_pairs(teams,costs)
-    match_gen = all_matchups_checks(teams,costs,match_size)
+    match_gen = all_matchups(teams,costs,match_size)
     
     ct = 0
     ctn = 0
@@ -228,7 +222,7 @@ if __name__ == '__main__':
     # Testing:
     import random
     
-    teams = [0,1,2,3,4,5,6,7]
+    teams = [0,1,2,3,4,5]
     
     random.seed(2)
     
@@ -242,7 +236,7 @@ if __name__ == '__main__':
     best_state = None
     current_state = None
     best_cost = 99999.0
-    match_size = 4
+    match_size = 3
 
     print ('DEBUG ')
     print (teams)

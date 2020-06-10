@@ -10,21 +10,41 @@ Set variables such as whether replays are allowed, factors for scaling rating et
 
 2) Rating calculations
 
-calculate player 'rating' based on starting rating plus previous results
-
-calculate matrix of 'cost' for each pairing, using factors:
-- difference in rating
-- whether they have played before
+for each previous result
+    update rating of players involved
+    update cost matrix - add cost associated with replaying the same players
+    
+for each player
+    for each other player
+        update cost matrix based on difference in rating
+        update cost matrix based on any other factors
+        
 
 3) determine next round of matches, depth-first tree search
-if matches are 2 player:
-- start with player 1, match with player 2, pass remaning player list on - recursive
-- keep running total of cost, if cost more than lowest total cost found so far, go back up a level
-- otherwise keep going down until all players matched up, and save 'round' and total cost, then go back up
+set size of match (i.e. number of players involved - default is 2)
 
+recursive (generator) function:
+input: list of teams no in matches yet, cost matrix, current match
 
-if matches are 3 player:
-- simialr to 2 but with 3 players per match. (yet to determine if this will work)
+if no current match:
+    add first team from list to current match, remove it from list of teams
+
+if no teams left:
+    accept current match, save score (check if best score?), go back up a level in recursion
+
+for each team in list of teams:
+    add team to current match, then:
+        calculate match score based on teams in it so far
+        only proceed if score is still less than best total found so far
+            go down a level in recursion
+            CALL FUNCTION AGAIN, passing just the remaining teams
+             - with current match if incomplete
+             - with no match if current match full
+            [handle returned values from coming back up]
+
+function to calculate cost of match:
+    calculate cost between each pair of players
+    sum this - so that cost always increases as players are added to match
 
 4) return best round as list of players and matchups
 
