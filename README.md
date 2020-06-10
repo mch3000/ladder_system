@@ -31,5 +31,5 @@ GNU GPLv3
 ## Acknowledgments
 
 * This was based off the ladder systems implemented by [TUC](https://www.tuc.org/leagues/ladder-system) and [OCUA](https://www.ocua.ca/wager-ladder)
-
+* This system was intially implemented for the [Brisbane Ultimate Mixed League](https://brisbane.ultimatecentral.com/)
 
