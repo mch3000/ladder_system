@@ -1,3 +1,30 @@
 Overview:
 
+1) Initialising:
+
+Import list of players/teams
+
+Import previous results
+
+Set variables such as whether replays are allowed, factors for scaling rating etc
+
+2) Rating calculations
+
+calculate player 'rating' based on starting rating plus previous results
+
+calculate matrix of 'cost' for each pairing, using factors:
+- difference in rating
+- whether they have played before
+
+3) determine next round of matches, depth-first tree search
+if matches are 2 player:
+- start with player 1, match with player 2, pass remaning player list on - recursive
+- keep running total of cost, if cost more than lowest total cost found so far, go back up a level
+- otherwise keep going down until all players matched up, and save 'round' and total cost, then go back up
+
+
+if matches are 3 player:
+- simialr to 2 but with 3 players per match. (yet to determine if this will work)
+
+4) return best round as list of players and matchups
 
