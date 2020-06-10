@@ -73,66 +73,74 @@ def all_matchups(teams,costs,match_size=2,score=0.0,current_match=[0.0]):
         starting_index = 1
     else:
         starting_index = 0
+        #skip over the teams already tested:
+        #starting_index = current_match[1]-
         
     #print(ws,'Current match: ',current_match)
     
     # for every other team in team list:
     for i in range(starting_index,len(teams)):
-        # cost of current adding team to current match
-        new_score = calc_cost(current_match[1],teams[i],costs)
-        
-        #print(ws,'Cost to add team',teams[i],' to match:',new_score,current_match)
-        #print(ws,'score',score)
-        # if total cost so far is less than global_max, keep going (otherwise no point in continuing)
-        # global_max is updated in parent function when generator is called
-        if new_score+score<global_max: # and s<50.0:
-            # update score2 with total score so far
-            score2 = new_score+score
+        if (teams[i]>current_match[1][-1]):
+            # cost of current adding team to current match
+            new_score = 0.0
+            # for each team already in match:
+            for ts in current_match[1]:
+                new_score += costs[ts][teams[i]]
             
-            # add new team to the match
-            current_match[0] += new_score
-            current_match[1].append(teams[i])
+            #new_score = calc_cost(current_match[1],teams[i],costs)
             
-            #print(ws,'Accepted. Total score now: ',score2)
-            #print(ws,'Current match now: ',current_match)
-            
-            #if current match is incomplete:
-            if len(current_match[1]) < match_size:
-                # continue down the tree with remaining teams
-                for rest in all_matchups(teams[starting_index:i]+teams[i+1:],costs,match_size,score2,current_match):
-                    # if no teams left to try, go back up
-                    if rest==None:
-                        #print(ws,'No teams left to try or global max reached.')
-                        yield None
-                    
-                    # else, combine pairs from lower down, and go back up
-                    else:
-                        #print(ws,'Passing only this up: ',rest)
-                        yield rest
-            else:
-                # continue down with new match:
-                #print(ws,'New match')
-                for rest in all_matchups(teams[starting_index:i]+teams[i+1:],costs,match_size,score2,[0.0]):
-                    # if no teams left to try, go back up
-                    if rest==None:
-                        #print(ws,'No teams left to try or global max reached.')
-                        yield None
-                    
-                    # else, combine pairs from lower down, and go back up
-                    else:
-                        #print(ws,'Passing this up: ',rest)
-                        yield [current_match] + rest
+            #print(ws,'Cost to add team',teams[i],' to match:',new_score,current_match)
+            #print(ws,'score',score)
+            # if total cost so far is less than global_max, keep going (otherwise no point in continuing)
+            # global_max is updated in parent function when generator is called
+            if new_score+score<global_max: # and s<50.0:
+                # update score2 with total score so far
+                score2 = new_score+score
+                
+                # add new team to the match
+                current_match[0] += new_score
+                current_match[1].append(teams[i])
+                
+                #print(ws,'Accepted. Total score now: ',score2)
+                #print(ws,'Current match now: ',current_match)
+                
+                #if current match is incomplete:
+                if len(current_match[1]) < match_size:
+                    # continue down the tree with remaining teams
+                    for rest in all_matchups(teams[starting_index:i]+teams[i+1:],costs,match_size,score2,current_match):
+                        # if no teams left to try, go back up
+                        if rest==None:
+                            #print(ws,'No teams left to try or global max reached.')
+                            yield None
                         
-            # remove team from current_match?
-            current_match[0] += -new_score
-            current_match[1].pop()
-            
-        # else stop searching this branch and go back up
-        else:
-            #print(ws,'Going back up, total score too high:',new_score+score )
-            yield None
-            
-        #print 'SL',state_level,current_state,len(teams)
+                        # else, combine pairs from lower down, and go back up
+                        else:
+                            #print(ws,'Passing only this up: ',rest)
+                            yield rest
+                else:
+                    # continue down with new match:
+                    #print(ws,'New match')
+                    for rest in all_matchups(teams[starting_index:i]+teams[i+1:],costs,match_size,score2,[0.0]):
+                        # if no teams left to try, go back up
+                        if rest==None:
+                            #print(ws,'No teams left to try or global max reached.')
+                            yield None
+                        
+                        # else, combine pairs from lower down, and go back up
+                        else:
+                            #print(ws,'Passing this up: ',rest)
+                            yield [current_match] + rest
+                            
+                # remove team from current_match?
+                current_match[0] += -new_score
+                current_match[1].pop()
+                
+            # else stop searching this branch and go back up
+            else:
+                #print(ws,'Going back up, total score too high:',new_score+score )
+                yield None
+                
+            #print 'SL',state_level,current_state,len(teams)
            
     # set current_state ??????
     current_state[state_level]=1
@@ -142,13 +150,11 @@ def all_matchups(teams,costs,match_size=2,score=0.0,current_match=[0.0]):
     #print(ws,'End of function - going back up to state_level: ',state_level)
 
 
-
-
 # preparing and calling generator
 
 def best_matchups(teams,costs,reset_state,best_cost,best_state,match_size):
     # badness must be list of lists
-    #starttime = time.time()
+    starttime = timer()
     
     global global_max, current_state, state_level
     global_max = best_cost+1.0
@@ -164,7 +170,6 @@ def best_matchups(teams,costs,reset_state,best_cost,best_state,match_size):
             best_match = current_state
 
     # Create the generator function, that will be called later:
-    #match_gen = all_pairs(teams,costs)
     match_gen = all_matchups_checks(teams,costs,match_size)
     
     ct = 0
@@ -194,8 +199,8 @@ def best_matchups(teams,costs,reset_state,best_cost,best_state,match_size):
         # ???? not sure why this is here
         if ctn%1000000==0:
             if ctn>0 and ctn%1000000==0:
-                #print ("<p>",'STATUS:',ct,ctn,best_score,round(time.time()-starttime,3),'s',"</p>")
-                print ("<p>",'STATUS:',ct,ctn,best_score,"</p>")
+                print ("<p>",'STATUS:',ct,ctn,best_score,round(timer()-starttime,3),'s',"</p>")
+                #print ("<p>",'STATUS:',ct,ctn,best_score,"</p>")
         
         # this bit was to exit if it took too long to calculate? more than 240.0 seconds?
         
@@ -206,10 +211,10 @@ def best_matchups(teams,costs,reset_state,best_cost,best_state,match_size):
         #    return [best_state,current_state]
         #    break
 
-    #print ('Time taken: ',round(time.time()-starttime,1))
+    print ('Time taken: ',round(timer()-starttime,4))
     
-    for r in best_match:
-        print (r)
+    #for r in best_match:
+    #    print (r)
         
     return best_match
 
@@ -218,7 +223,7 @@ if __name__ == '__main__':
     # Testing:
     import random
     
-    teams = [i for i in range(12)]
+    teams = [i for i in range(18)]
     
     random.seed(2)
     
@@ -227,25 +232,24 @@ if __name__ == '__main__':
         costs.append([])
         for j in range(len(teams)):
             #costs[i].append(random.randint(0,10))
-            costs[i].append(20.0-abs(i-j)+random.randint(0,10))
+            if i>j:
+                costs[i].append(0.0+costs[j][i])
+            elif i<j:
+                costs[i].append(20.0-abs(i-j)+random.randint(0,10))
+            else:
+                costs[i].append(99.0)
 
     best_state = None
     current_state = None
     best_cost = 99999.0
-    match_size = 3
+    match_size = 2
 
     print ('DEBUG ')
     print (teams)
     for i in range(len(costs)):
         print (costs[i])
 
-    #results = best_matchups(teams,costs,current_state,best_cost,best_state,match_size)
-    
-    start = timer()
-    
     results = best_matchups(teams,costs,current_state,best_cost,best_state,match_size)
-    
-    print('TIME',timer() - start)
     
     print ('AFTER RUNNING ')
     for r in results:
