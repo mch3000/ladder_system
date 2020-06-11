@@ -4,15 +4,15 @@ This is a system for ranking players or teams and coming up with a new round of 
 
 ## Getting Started
 
-... coming soon ...
+Run *ladder_system.py* and you should see the output of some tests confirming it is working.
 
 ### Prerequisites
 
-Python. I used python3.8.2 but it should work on older versions.
+* Python. I used python 3.8.2 but it should work on older versions.
 
 ### Installing
 
-N/A
+Clone the repository.
 
 ## Running
 

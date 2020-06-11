@@ -1,17 +1,19 @@
 #!/usr/bin/python3
 
-# Terms:
+# Terms used in documentation:
 #
 # 'teams' - referred to by a positive integer (e.g. team 2) - objects that need to be matched up
 # 'match' - grouping two or more teams together into a 'match', which will have a 'score'
-# 'score' - number given to the match, based on 'costs', where higher is worse
+# 'cost' - number given to each pair of teams, indicating cost of playing each other, higher is worse
+# 'score' - number given to the match or round, sum of costs, aim to minimise this
 # 'round' - collection of matches where all teams are matched up - has a total score
 
 
 from timeit import default_timer as timer
-import sys
 import copy
 
+
+#### best_matchups
 # Find the best matchups, given teams, cost matrix, and match_size
 # This function to prepares and calls the generator all_matchups
 
@@ -50,10 +52,11 @@ def best_matchups(teams,costs,match_size):
         
         # Print status updates every 1,000,000 matches:
         if ctn%1000000==0:
-            print ("<p>",'STATUS:',ct,ctn,lowest_score,round(timer()-starttime,3),'s',"</p>")
+            print ('STATUS (# new best rounds, # rounds discarded, best score, elapsed time):')
+            print (ct,ctn,lowest_score,round(timer()-starttime,3),'s')
             #print ("<p>",'STATUS:',ct,ctn,lowest_score,"</p>")
 
-    print ('Time taken: ',round(timer()-starttime,4))
+    print ('Total Time taken: ',round(timer()-starttime,4))
     
     #for r in best_match:
     #    print (r)
@@ -61,6 +64,7 @@ def best_matchups(teams,costs,match_size):
     return best_match
 
 
+#### all_matchups_checks
 # Check inputs before calling all_matchups
 def all_matchups_checks(teams,costs,match_size=2):
     if match_size < 2:
@@ -79,7 +83,7 @@ def all_matchups_checks(teams,costs,match_size=2):
     return all_matchups(teams,costs,match_size)
 
 
-# all_matchups
+#### all_matchups
 # Function that searches for matchups with lowest total cost
 # ** NOTE ** this is recursive!
 # ** NOTE ** the 'yield' command is complicated - later calls to this function will return to this spot!
@@ -175,8 +179,7 @@ def all_matchups(teams,costs,match_size=2,score=0.0,current_match=[0.0]):
     recursion_level += -1
 
 
-if __name__ == '__main__':
-    
+def test_matchups_triple():
     # Testing:
     import random
     
@@ -198,14 +201,24 @@ if __name__ == '__main__':
 
     match_size = 3
 
-    print ('DEBUG ')
-    print (teams)
-    for i in range(len(costs)):
-        print (costs[i])
+    print ('Running test with 16 teams, matching in pairs ')
+    
+    #print (teams)
+    #for i in range(len(costs)):
+    #    print (costs[i])
 
     results = best_matchups(teams,costs,match_size)
     
     print ('RESULTS ')
     for r in results:
         print (r)
+
+if __name__ == '__main__':
+    
+    #test_matchups_pairs()
+    
+    test_matchups_triple()
+    
+    #test_matchups_quad()
+    
 
