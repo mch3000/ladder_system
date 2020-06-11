@@ -1,8 +1,12 @@
-# Virtural environment files
+# Local Python Virtural Environment
 venv/
 
-#Jetbrains IDE files. I'd include if all developers are using the same IDE.
+# Local Jetbrains IDE files. I'd include if all developers are using the same IDE.
 .idea/
 
-#Add you own local test files/IDE
-#...
+#Cache Files
+__pycache__/
+
+# misc?
+tournament_test.py
+
