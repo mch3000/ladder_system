@@ -328,51 +328,21 @@ def setup_ladder(team_info,previous_matches,match_size=2):
     # previous_matches: round number, [team, score], [team, score] etc.
     
     costs = [[0.0 for i in range(len(team_info))] for j in range(len(team_info))]
-    
-    bye_teams = []
-    
-    team_dict = {}
-    
-    for i in range(len(team_info)):
-        team_dict[team_info[i][0]] = i
-        if team_info[i][0][:3] == 'bye':
-            bye_teams.append(i)
-    
-    print('bye teams: ',bye_teams)
-    
-    replay_cost = 500.0 #will be multiplied by round_number
-
-    #print ('Previous matches')
-    for r in previous_matches:
-        n_teams = len(r)-1
         
-        #print(r)
-        
-        for i in range(n_teams):
-            # team number:
-            teami = team_dict[r[i+1][0]]
-            for j in range(n_teams):
-                # team number:
-                teamj = team_dict[r[j+1][0]]
-                if i!=j:
-                    # handle byes: add replay_cost for all bye teams
-                    if (teami in bye_teams):
-                        for bt in bye_teams:
-                            costs[bt][teamj] += replay_cost*(20+r[0])
-                    elif (teamj in bye_teams):
-                        for bt in bye_teams:
-                            costs[teami][bt] += replay_cost*(20+r[0])       
-                    else:
-                        # add replay cost - to avoid playing same teams again
-                        costs[teami][teamj] += r[0]*replay_cost
-                        
-                        # now update team i rating, ignoring byes
-                        team_info[teami][2] += calc_rating_change(r[i+1][1],r[j+1][1],team_info[teami][1],team_info[teamj][1])
-        
-        # only after round calculated, update actual ratings:
-        for i in range(len(team_info)):
-            team_info[i][1] = team_info[i][2]
+    team_info,costs = update_ratings(previous_matches,team_info,costs)
     
+    print ('One pass ratings:')
+    for t in team_info:
+        print(*t[0:2],sep=",")
+        
+    # rerun rating update to try to see if ratings good for all matches
+    for i in range(3):
+        team_info,costs_discard = update_ratings(previous_matches,team_info,costs)
+    
+    print ('Multipass ratings:')
+    for t in team_info:
+        print(*t[0:2],sep=",")
+        
     # now update cost matrix with rating differences:
     for i in range(len(team_info)):
         if team_info[i][0][:3]=='bye':
@@ -399,23 +369,109 @@ def setup_ladder(team_info,previous_matches,match_size=2):
     for r in results:
         print (*[team_info[i][0] for i in r[1]], sep = ", ,")
         
+def update_ratings(previous_matches,team_info,costs):
+    
+    bye_teams = []
+    
+    team_dict = {}
+    
+    for i in range(len(team_info)):
+        team_dict[team_info[i][0]] = i
+        if team_info[i][0][:3] == 'bye':
+            bye_teams.append(i)
+    
+    #print('bye teams: ',bye_teams)
+    
+    replay_cost = 500.0 #will be multiplied by round_number
+    
+    cur = 0
+
+    #print ('Previous matches')
+    for r in previous_matches:
+        n_teams = len(r)-1
+        
+        #print(r)
+        #if r[0]>cur:
+        #    cur = r[0]
+        #    print ('Latest ratings: r',cur-1)
+        #    for t in team_info:
+        #        print(*t[0:2],sep=",")
+        
+        for i in range(n_teams):
+            # team number:
+            teami = team_dict[r[i+1][0]]
+            for j in range(n_teams):
+                # team number:
+                teamj = team_dict[r[j+1][0]]
+                if i!=j:
+                    # handle byes: add replay_cost for all bye teams
+                    if (teami in bye_teams):
+                        for bt in bye_teams:
+                            costs[bt][teamj] += replay_cost*(20+r[0])
+                    elif (teamj in bye_teams):
+                        for bt in bye_teams:
+                            costs[teami][bt] += replay_cost*(20+r[0])       
+                    else:
+                        # add replay cost - to avoid playing same teams again
+                        costs[teami][teamj] += r[0]*replay_cost
+                        
+                        # now update team i rating, ignoring byes
+                        team_info[teami][2] += calc_rating_change(r[i+1][1],r[j+1][1],team_info[teami][1],team_info[teamj][1])
+        
+        # only after round calculated, update actual ratings:
+        for i in range(len(team_info)):
+            team_info[i][1] = team_info[i][2]
+            
+    return team_info,costs
              
 def calc_rating_change(score1,score2,rating1,rating2):
-    win_bonus = 20 # amount your rating goes up (or down) if score higher than someone with a higher rating, or vice-versa
-    score_factor = 20.0 #multiply by the factor based on score difference
-    score_change = win_bonus+int(score_factor*abs(score1-score2)/(abs(score1)+abs(score2)))
+    #####
+    #
+    # Win?  rating higher    get rating b   score factor        Net
+    # yes   yes                 -ive            +ive            small change
+    # yes   no                  +ive            +ive            big change
+    # no    yes                 -ive            -ive            big negative
+    # no    no                  +ive            -ive
+    
+    # summary:
+    # if win: rating increase
+    # add amount based on negative of rating difference
+    # add amount based on score (negative if you lost) - equal to rating difference
+    
+    
+    win_bonus = 3 # amount your rating goes up (or down) if score higher than someone with a higher rating, or vice-versa
+    score_rating_change = 3.0 #multiply by the factor based on score difference
+    
+    add_to_score = 1.0*min(1,min(score1,score2)) # add this to make sure no scores are negative
+    
+    # ratio of scores:
+    # 1.0 to 2.0, no benefit from beating by anything more than double
+    score_factor = min(2.0,(max(score1,score2)+add_to_score)/(min(score1,score2)+add_to_score)) # minimum value is 0.5
+    
+    
+    # rating factor - between 1.0 and 2.0
+    rating_factor = min(abs(rating1-rating2)/100.0,1.0)+1.0
+    
+    # your rating decreases by rating factor, increases by score factor
+    # so if your rating is half your opponents, but you score twice as much
+    
+    
     
     if rating1>rating2:
-        if score1<score2:
-            return -score_change
+        if score1<=score2:
+            return -win_bonus-int(score_rating_change*(score_factor+rating_factor)+0.5)
+        else:
+            return win_bonus+int(score_rating_change*(score_factor-rating_factor)+0.5)
     elif rating1<rating2:
-        if score1>score2:
-            return score_change
+        if score1>=score2:
+            return win_bonus+int(score_rating_change*(score_factor+rating_factor)+0.5)
+        else:
+            return -win_bonus-int(score_rating_change*(score_factor-rating_factor)+0.5)
     else:
         if score1>score2:
-            return score_change
+            return win_bonus+int(score_rating_change*(score_factor)+0.5)
         elif score1<score2:
-            return -score_change
+            return -win_bonus-int(score_rating_change*(score_factor)+0.5)
     
     return 0
 
