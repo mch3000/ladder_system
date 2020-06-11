@@ -17,7 +17,7 @@ import copy
 # Find the best matchups, given teams, cost matrix, and match_size
 # This function to prepares and calls the generator all_matchups
 
-def best_matchups(teams,costs,match_size):
+def best_matchups(teams,costs,match_size,quiet=True):
     starttime = timer()
     
     global lowest_score, recursion_level
@@ -32,7 +32,7 @@ def best_matchups(teams,costs,match_size):
     ct = 0
     ctn = 0
     
-    print ('Calling generator')
+    if not quiet: print ('Calling generator')
     
     for match in match_gen:
         #print ('TEST',current_state,'Best so far?',match!=None)
@@ -52,11 +52,12 @@ def best_matchups(teams,costs,match_size):
         
         # Print status updates every 1,000,000 matches:
         if ctn%1000000==0:
-            print ('STATUS (# new best rounds, # rounds discarded, best score, elapsed time):')
-            print (ct,ctn,lowest_score,round(timer()-starttime,3),'s')
-            #print ("<p>",'STATUS:',ct,ctn,lowest_score,"</p>")
+            if not quiet: 
+                print ('STATUS (# new best rounds, # rounds discarded, best score, elapsed time):')
+                print (ct,ctn,lowest_score,round(timer()-starttime,3),'s')
+                #print ("<p>",'STATUS:',ct,ctn,lowest_score,"</p>")
 
-    print ('Total Time taken: ',round(timer()-starttime,4))
+    if not quiet: print ('Total Time taken: ',round(timer()-starttime,4))
     
     #for r in best_match:
     #    print (r)
@@ -178,12 +179,74 @@ def all_matchups(teams,costs,match_size=2,score=0.0,current_match=[0.0]):
     # going back up a level so reduce recursion_level by 1
     recursion_level += -1
 
+def test_matchups_pairs():
+    #NOT WORKING
+    print('NOT WORKING - does not produce results')
+    return False
+# Testing:
+    import random
+    
+    teams = [i for i in range(14)]
+    
+    random.seed(2)
+    
+    costs = []
+    for i in range(len(teams)):
+        costs.append([])
+        for j in range(len(teams)):
+            #costs[i].append(random.randint(0,10))
+            if i>j:
+                costs[i].append(0.0+costs[j][i])
+            elif i<j:
+                costs[i].append(20.0-abs(i-j)+random.randint(0,10))
+            else:
+                costs[i].append(99.0)
+
+    match_size = 2
+
+    print ('Running test with 14 teams, matching in groups of 2 ')
+    
+    #print (teams)
+    #for i in range(len(costs)):
+    #    print (costs[i])
+
+    results = best_matchups(teams,costs,match_size,quiet=True)
+    
+    print (results)
+    
+    correct_results = [[8.0, [0, 12]], [8.0, [1, 13]], [14.0, [2, 10]], [16.0, [3, 9]], [19.0, [4, 7]], [19.0, [5, 8]], [23.0, [6, 11]]]
+    
+    results_same = True
+    for i in range(len(results)):
+        if (results[i][0]!=correct_results[i][0]):
+            results_same = False
+            break
+            #raise Exception('Error: results different')
+        for j in range(len(results[i][1])):
+            if (results[i][1][j]!=correct_results[i][1][j]):
+                results_same = False
+                break
+                #raise Exception('Error: results different')
+        if not results_same: break
+        
+    if results_same:
+        print ('-- Results correct --')
+    else:
+        print ('ERROR, results different: teams 14, match size 2')
+        print ('Results:')
+        for r in results:
+            print(r)
+        print ('Expected Results:')
+        for r in correct_results:
+            print(r)
+    
+    return results_same
 
 def test_matchups_triple():
     # Testing:
     import random
     
-    teams = [i for i in range(15)]
+    teams = [i for i in range(12)]
     
     random.seed(2)
     
@@ -201,24 +264,192 @@ def test_matchups_triple():
 
     match_size = 3
 
-    print ('Running test with 16 teams, matching in pairs ')
+    print ('TEST: Running with 12 teams, matching in groups of 3')
     
     #print (teams)
     #for i in range(len(costs)):
     #    print (costs[i])
 
-    results = best_matchups(teams,costs,match_size)
+    results = best_matchups(teams,costs,match_size,quiet=True)
     
-    print ('RESULTS ')
-    for r in results:
-        print (r)
+    correct_results = [[57.0, [0, 4, 7]], [56.0, [1, 5, 9]], [54.0, [2, 6, 10]], [49.0, [3, 8, 11]]]
+    
+    results_same = True
+    for i in range(len(results)):
+        if (results[i][0]!=correct_results[i][0]):
+            results_same = False
+            break
+            #raise Exception('Error: results different')
+        for j in range(len(results[i][1])):
+            if (results[i][1][j]!=correct_results[i][1][j]):
+                results_same = False
+                break
+                #raise Exception('Error: results different')
+        if not results_same: break
+    
+    if results_same:
+        print ('-- Results correct --')
+    else:
+        print ('ERROR, results different: teams 15, match size 3')
+        print ('Results:')
+        for r in results:
+            print(r)
+        print ('Expected Results:')
+        for r in correct_results:
+            print(r)
+    
+    return results_same
 
+def test_matchups_quad():
+    #NOT WORKING
+    print('NOT WORKING - does not produce results')
+    return False
+    
+
+## team_info
+# position in list is number
+# name - CANNOT START WITH 'bye' - will be treated as a 'bye'
+# rating - higher is better
+# starting_rating
+
+# Cost matrix:
+# if name is bye:
+# - cost 9999 to play another 'bye' team
+# - ignore rating in cost
+
+# Previous results
+# need:
+# team names and scores
+# round number
+
+
+def setup_ladder(team_info,previous_matches,match_size=2):
+    # team_info: team name, starting rating, updated ranking
+    # previous_matches: round number, [team, score], [team, score] etc.
+    
+    costs = [[0.0 for i in range(len(team_info))] for j in range(len(team_info))]
+    
+    bye_teams = []
+    
+    team_dict = {}
+    
+    for i in range(len(team_info)):
+        team_dict[team_info[i][0]] = i
+        if team_info[i][0][:3] == 'bye':
+            bye_teams.append(i)
+    
+    print('bye teams: ',bye_teams)
+    
+    replay_cost = 500.0 #will be multiplied by round_number
+
+    #print ('Previous matches')
+    for r in previous_matches:
+        n_teams = len(r)-1
+        
+        #print(r)
+        
+        for i in range(n_teams):
+            # team number:
+            teami = team_dict[r[i+1][0]]
+            for j in range(n_teams):
+                # team number:
+                teamj = team_dict[r[j+1][0]]
+                if i!=j:
+                    # handle byes: add replay_cost for all bye teams
+                    if (teami in bye_teams):
+                        for bt in bye_teams:
+                            costs[bt][teamj] += replay_cost*(20+r[0])
+                    elif (teamj in bye_teams):
+                        for bt in bye_teams:
+                            costs[teami][bt] += replay_cost*(20+r[0])       
+                    else:
+                        # add replay cost - to avoid playing same teams again
+                        costs[teami][teamj] += r[0]*replay_cost
+                        
+                        # now update team i rating, ignoring byes
+                        team_info[teami][2] += calc_rating_change(r[i+1][1],r[j+1][1],team_info[teami][1],team_info[teamj][1])
+        
+        # only after round calculated, update actual ratings:
+        for i in range(len(team_info)):
+            team_info[i][1] = team_info[i][2]
+    
+    # now update cost matrix with rating differences:
+    for i in range(len(team_info)):
+        if team_info[i][0][:3]=='bye':
+            for j in range(len(team_info)):
+                if team_info[j][0][:3]=='bye':
+                    costs[i][j] = 99999.0
+        else:
+            for j in range(len(team_info)):
+                if team_info[j][0][:3]!='bye':
+                    costs[i][j] += abs(team_info[i][1]-team_info[j][1])
+    
+    
+    for c in costs:
+        print (c)
+        
+    
+    print ('Latest ratings:')
+    for t in team_info:
+        print(*t[0:2],sep=",")
+            
+    results = best_matchups([i for i in range(len(team_info))],costs,match_size,quiet=True)
+    
+    print ('Next round of matches:')
+    for r in results:
+        print (*[team_info[i][0] for i in r[1]], sep = ", ,")
+        
+             
+def calc_rating_change(score1,score2,rating1,rating2):
+    win_bonus = 20 # amount your rating goes up (or down) if score higher than someone with a higher rating, or vice-versa
+    score_factor = 20.0 #multiply by the factor based on score difference
+    score_change = win_bonus+int(score_factor*abs(score1-score2)/(abs(score1)+abs(score2)))
+    
+    if rating1>rating2:
+        if score1<score2:
+            return -score_change
+    elif rating1<rating2:
+        if score1>score2:
+            return score_change
+    else:
+        if score1>score2:
+            return score_change
+        elif score1<score2:
+            return -score_change
+    
+    return 0
+
+
+def trial_run():
+    team_info = [
+        
+    ['team0name',1000,1000],
+    ['team1name',1000,1000],
+    ['team2name',1000,1000],
+    ['team3name',1000,1000],
+    ['team4name',1000,1000],
+    ['team5name',1000,1000],
+                     
+                ]
+                
+# round number, [team, score], [team, score] etc.
+    previous_matches = [
+        
+    [1,['team0name',25],['team1name',52],['team2name',26]],
+    [1,['team3name',23],['team4name',24],['team5name',15]],
+
+                        ]
+    
+    setup_ladder(team_info,previous_matches,3)
+    
+    
 if __name__ == '__main__':
     
     #test_matchups_pairs()
     
-    test_matchups_triple()
+    #test_matchups_triple()
     
     #test_matchups_quad()
     
-
+    trial_run()
+    
