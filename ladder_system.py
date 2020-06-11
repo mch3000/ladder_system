@@ -442,7 +442,9 @@ def calc_rating_change(score1,score2,rating1,rating2):
     win_bonus = 3 # amount your rating goes up (or down) if score higher than someone with a higher rating, or vice-versa
     score_rating_change = 3.0 #multiply by the factor based on score difference
     
-    add_to_score = 1.0*min(1,min(score1,score2)) # add this to make sure no scores are negative
+    add_to_score = 0.0
+    if min(score1,score2) < 1:
+        add_to_score = abs(min(score1,score2)) # add this to sure all scores positive
     
     # ratio of scores:
     # 1.0 to 2.0, no benefit from beating by anything more than double
