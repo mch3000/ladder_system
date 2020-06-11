@@ -1,0 +1,8 @@
+# Virtural environment files
+venv/
+
+#Jetbrains IDE files. I'd include if all developers are using the same IDE.
+.idea/
+
+#Add you own local test files/IDE
+#...
