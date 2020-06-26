@@ -8,6 +8,7 @@
 # 'score' - number given to the match or round, sum of costs, aim to minimise this
 # 'round' - collection of matches where all teams are matched up - has a total score
 
+from glicko2.glicko2 import Glicko2, WIN, DRAW, LOSS
 
 from timeit import default_timer as timer
 import copy
@@ -179,69 +180,6 @@ def all_matchups(teams,costs,match_size=2,score=0.0,current_match=[0.0]):
     # going back up a level so reduce recursion_level by 1
     recursion_level += -1
 
-def test_matchups_pairs():
-    #NOT WORKING
-    print('NOT WORKING - does not produce results')
-    return False
-# Testing:
-    import random
-    
-    teams = [i for i in range(14)]
-    
-    random.seed(2)
-    
-    costs = []
-    for i in range(len(teams)):
-        costs.append([])
-        for j in range(len(teams)):
-            #costs[i].append(random.randint(0,10))
-            if i>j:
-                costs[i].append(0.0+costs[j][i])
-            elif i<j:
-                costs[i].append(20.0-abs(i-j)+random.randint(0,10))
-            else:
-                costs[i].append(99.0)
-
-    match_size = 2
-
-    print ('Running test with 14 teams, matching in groups of 2 ')
-    
-    #print (teams)
-    #for i in range(len(costs)):
-    #    print (costs[i])
-
-    results = best_matchups(teams,costs,match_size,quiet=True)
-    
-    print (results)
-    
-    correct_results = [[8.0, [0, 12]], [8.0, [1, 13]], [14.0, [2, 10]], [16.0, [3, 9]], [19.0, [4, 7]], [19.0, [5, 8]], [23.0, [6, 11]]]
-    
-    results_same = True
-    for i in range(len(results)):
-        if (results[i][0]!=correct_results[i][0]):
-            results_same = False
-            break
-            #raise Exception('Error: results different')
-        for j in range(len(results[i][1])):
-            if (results[i][1][j]!=correct_results[i][1][j]):
-                results_same = False
-                break
-                #raise Exception('Error: results different')
-        if not results_same: break
-        
-    if results_same:
-        print ('-- Results correct --')
-    else:
-        print ('ERROR, results different: teams 14, match size 2')
-        print ('Results:')
-        for r in results:
-            print(r)
-        print ('Expected Results:')
-        for r in correct_results:
-            print(r)
-    
-    return results_same
-
 def test_matchups_triple():
     # Testing:
     import random
@@ -300,11 +238,6 @@ def test_matchups_triple():
     
     return results_same
 
-def test_matchups_quad():
-    #NOT WORKING
-    print('NOT WORKING - does not produce results')
-    return False
-    
 
 ## team_info
 # position in list is number
@@ -323,53 +256,38 @@ def test_matchups_quad():
 # round number
 
 
-def setup_ladder(team_info,previous_matches,match_size=2):
+def setup_ladder(team_info,previous_matches,match_size=2,additional_costs=None):
     # team_info: team name, starting rating, updated ranking
     # previous_matches: round number, [team, score], [team, score] etc.
     
+    # dominion.online use tau=0.4 for 2p, and tau=0.3 for 3p & 4p
+    # starting rating 1500, volatility 0.06
+    glicko_env = Glicko2(tau=0.5)
+    
+    # glicko ratings:
+    # mu = rating, phi = deviation, sigma = volatility
+    sigma = 0.15
+    teams = [glicko_env.create_rating(t[1],t[2],sigma=sigma) for t in team_info]
+    teams_playing = [t[3] for t in team_info]
+        
+    #for i in range(len(team_info)):
+    #    print (team_info[i][0],teams[i].mu,teams[i].phi)
+    
+    replay_cost = 1.0*10.0
+    replay_recent_cost = 1.0*100.0 #how much to add for the previous X rounds
+    replay_rounds = 3
+    
     costs = [[0.0 for i in range(len(team_info))] for j in range(len(team_info))]
-        
-    team_info,costs = update_ratings(previous_matches,team_info,costs)
     
-    print ('One pass ratings:')
+    
+    print ('Initial ratings:')
     for t in team_info:
         print(*t[0:2],sep=",")
         
-    # rerun rating update to try to see if ratings good for all matches
-    for i in range(3):
-        team_info,costs_discard = update_ratings(previous_matches,team_info,costs)
+    #update ratings using glicko system:
+    # rated = env.rate(r1, [(WIN, r2),
     
-    print ('Multipass ratings:')
-    for t in team_info:
-        print(*t[0:2],sep=",")
-        
-    # now update cost matrix with rating differences:
-    for i in range(len(team_info)):
-        if team_info[i][0][:3]=='bye':
-            for j in range(len(team_info)):
-                if team_info[j][0][:3]=='bye':
-                    costs[i][j] = 99999.0
-        else:
-            for j in range(len(team_info)):
-                if team_info[j][0][:3]!='bye':
-                    costs[i][j] += abs(team_info[i][1]-team_info[j][1])
-    
-    
-    for c in costs:
-        print (c)
-        
-    
-    print ('Latest ratings:')
-    for t in team_info:
-        print(*t[0:2],sep=",")
-            
-    results = best_matchups([i for i in range(len(team_info))],costs,match_size,quiet=True)
-    
-    print ('Next round of matches:')
-    for r in results:
-        print (*[team_info[i][0] for i in r[1]], sep = ", ,")
-        
-def update_ratings(previous_matches,team_info,costs):
+    temp_teams = copy.deepcopy(teams)
     
     bye_teams = []
     
@@ -380,17 +298,37 @@ def update_ratings(previous_matches,team_info,costs):
         if team_info[i][0][:3] == 'bye':
             bye_teams.append(i)
     
+    # preset costs:
+    
+    if not (additional_costs==None):
+        for ac in additional_costs:
+            teami = team_dict.get(ac[0])
+            teamj = team_dict.get(ac[1])
+            if teami==None:
+                print('---- TEAM NOT FOUND:',ac[0])
+            if teamj==None:
+                print('---- TEAM NOT FOUND:',ac[0])
+            
+            if (teamj!=None) and (teami!=None):
+                costs[teami][teamj] = ac[2]
+                costs[teamj][teami] = ac[2]
+                
+    for c in costs:
+        print (c)        
+    
     #print('bye teams: ',bye_teams)
     
-    replay_cost = 0.0 #will be multiplied by round_number
-    replay_recent_cost = 50.0
-    cur = 0
+
     
     max_rounds = 0
     for r in previous_matches:
         if r[0] > max_rounds:
             max_rounds = r[0]
-            
+    
+    print('Rounds so far',max_rounds)
+    
+    cur = 1
+
     #print ('Previous matches')
     for r in previous_matches:
         n_teams = len(r)-1
@@ -401,7 +339,12 @@ def update_ratings(previous_matches,team_info,costs):
         #    print ('Latest ratings: r',cur-1)
         #    for t in team_info:
         #        print(*t[0:2],sep=",")
-        
+        if r[0]>cur:
+            cur = r[0]
+            print ('After Round:',r[0]-1)
+            for i in range(len(team_info)):
+                print (team_info[i][0],int(teams[i].mu),int(teams[i].phi))
+                
         for i in range(n_teams):
             # team number:
             teami = team_dict[r[i+1][0]]
@@ -412,24 +355,89 @@ def update_ratings(previous_matches,team_info,costs):
                     # handle byes: add replay_cost for all bye teams
                     if (teami in bye_teams):
                         for bt in bye_teams:
-                            costs[bt][teamj] += replay_cost*(20+r[0])
+                            costs[bt][teamj] += replay_cost*20
                     elif (teamj in bye_teams):
                         for bt in bye_teams:
-                            costs[teami][bt] += replay_cost*(20+r[0])       
+                            costs[teami][bt] += replay_cost*20       
                     else:
                         # add replay cost - to avoid playing same teams again
                         costs[teami][teamj] += replay_cost
-                        if (max_rounds - r[0])<1.5:
+                        if (max_rounds - r[0])<(replay_rounds+0.5):
                             costs[teami][teamj] += replay_recent_cost
                         
                         # now update team i rating, ignoring byes
-                        team_info[teami][2] += calc_rating_change(r[i+1][1],r[j+1][1],team_info[teami][1],team_info[teamj][1])
+                        if (r[i+1][1] > r[j+1][1]):
+                            game_result = min(r[i+1][1] / max(r[j+1][1],1.0),2.0)/2.0 #WIN
+                        elif (r[i+1][1] < r[j+1][1]):
+                            game_result = r[i+1][1] / (max(r[j+1][1],1.0)*2.0) #LOSS
+                        else:
+                            game_result = DRAW
+                        
+                        #print(r[i+1][1] , r[j+1][1] , game_result)
+                        #print(r[i+1][0],r[j+1][0],temp_teams[teami].mu,teams[teamj].mu)
+                        
+                        temp_teams[teami] = glicko_env.rate(temp_teams[teami],[(game_result,teams[teamj])])
+                        
+                        #print(temp_teams[teami].mu,teams[teamj].mu)
         
         # only after round calculated, update actual ratings:
-        for i in range(len(team_info)):
-            team_info[i][1] = team_info[i][2]
-            
-    return team_info,costs
+        for i in range(len(teams)):
+            teams[i] = temp_teams[i]
+        
+    print ('Final:')
+    for i in range(len(team_info)):
+        print ('[\'',team_info[i][0],'\',',int(teams[i].mu),',variability,True],',sep='')    
+    
+    # now update cost matrix with rating differences:
+    for i in range(len(team_info)):
+        if team_info[i][0][:3]=='bye':
+            for j in range(len(team_info)):
+                if team_info[j][0][:3]=='bye':
+                    costs[i][j] = 99999.0
+        else:
+            for j in range(len(team_info)):
+                if team_info[j][0][:3]!='bye':
+                    costs[i][j] += abs(teams[i].mu-teams[j].mu)
+    
+    print(*[team_info[j][0] for j in range(len(costs[0]))])
+    
+    for i in range(len(costs)):
+        print(team_info[i][0],'costs:')
+        for j in range(len(costs[i])):
+            costs[i][j] = round(costs[i][j],1)
+            #print('    ',costs[i][j],team_info[j][0])
+        print(*[costs[i][j] for j in range(len(costs[i]))])
+       
+    for i in range(len(team_info)):
+        if (teams_playing[i]):
+            print (team_info[i][0],',',int(teams[i].mu))
+                
+    # CUT OUT TEAMS NOT COMPETING IN THIS ROUND:
+    # from team_info and costs:
+    for i in range(len(teams_playing)):
+        j = len(teams_playing)-i-1
+        if not (teams_playing[j]):
+            team_info.pop(j)
+            for k in range(len(costs)):
+                costs[k].pop(j)
+            costs.pop(j)
+        
+    print(len(team_info),len(costs))
+    
+    
+    results = best_matchups([i for i in range(len(team_info))],costs,match_size,quiet=True)
+    
+    print ('Next round of matches:')
+    costt = 0.0
+    
+    for r in results:
+        print (*[team_info[i][0] for i in r[1]], sep = ", ,")
+    
+    for r in results:
+        print(r[0])
+        costt+=r[0]
+    print('Total cost:',costt)
+        
              
 def calc_rating_change(score1,score2,rating1,rating2):
     #####
@@ -507,14 +515,36 @@ def trial_run():
     
     setup_ladder(team_info,previous_matches,3)
     
+
+def glicko_test():
+    env = Glicko2(tau=0.5)
+    r1 = env.create_rating(1500, 200, 0.06)
+    r2 = env.create_rating(1400, 30)
+    r3 = env.create_rating(1550, 100)
+    r4 = env.create_rating(1700, 300)
+    print (r1)
+    print (r2)
+    
+    rated = env.rate(r1, [(WIN, r2), (LOSS, r3), (LOSS, r4)])
+
+    print (r1)
+    print (r2)
+    
+    print ('RATED:')
+    
+    print(rated)
+    print(env.create_rating(1464.051, 151.515, 0.05999))
+    
+    r1 = rated
     
 if __name__ == '__main__':
     
-    #test_matchups_pairs()
-    
     #test_matchups_triple()
+        
+    #trial_run()
     
-    #test_matchups_quad()
+    glicko_test()
     
-    trial_run()
+    
+    
     

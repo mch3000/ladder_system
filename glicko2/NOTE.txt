@@ -1,0 +1,3 @@
+cloned on 18/06/2020 from
+https://github.com/sublee/glicko2
+
