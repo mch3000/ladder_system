@@ -180,6 +180,38 @@ def all_matchups(teams,costs,match_size=2,score=0.0,current_match=[0.0]):
     # going back up a level so reduce recursion_level by 1
     recursion_level += -1
 
+def test_matchups(nteams=12,match_size=3):
+    import random
+    
+    # add teams to make multiple of match_size
+    while (nteams%match_size!=0):
+        nteams+=1
+    
+    teams = [i for i in range(nteams)]
+    
+    random.seed(2)
+    
+    costs = []
+    for i in range(len(teams)):
+        costs.append([])
+        for j in range(len(teams)):
+            #costs[i].append(random.randint(0,10))
+            if i>j:
+                costs[i].append(0.0+costs[j][i])
+            elif i<j:
+                costs[i].append(20.0-abs(i-j)+random.randint(0,10))
+            else:
+                costs[i].append(99.0)
+
+    print ('TEST: Running with ',nteams,'teams, and matches of',match_size)
+    
+    #print (teams)
+    #for i in range(len(costs)):
+    #    print (costs[i])
+
+    results = best_matchups(teams,costs,match_size,quiet=False)
+    
+
 def test_matchups_triple():
     # Testing:
     import random
@@ -239,21 +271,23 @@ def test_matchups_triple():
     return results_same
 
 
+## setup_ladder
+#
 ## team_info
 # position in list is number
 # name - CANNOT START WITH 'bye' - will be treated as a 'bye'
 # rating - higher is better
 # starting_rating
 
-# Cost matrix:
-# if name is bye:
-# - cost 9999 to play another 'bye' team
-# - ignore rating in cost
-
 # Previous results
 # need:
 # team names and scores
 # round number
+
+# Cost matrix:
+# if name is bye:
+# - cost 9999 to play another 'bye' team
+# - ignore rating in cost
 
 
 def setup_ladder(team_info,previous_matches,match_size=2,additional_costs=None):
@@ -384,7 +418,7 @@ def setup_ladder(team_info,previous_matches,match_size=2,additional_costs=None):
         for i in range(len(teams)):
             teams[i] = temp_teams[i]
         
-    print ('Final:')
+    print ('Updated ratings:')
     for i in range(len(team_info)):
         print ('[\'',team_info[i][0],'\',',int(teams[i].mu),',variability,True],',sep='')    
     
@@ -407,7 +441,8 @@ def setup_ladder(team_info,previous_matches,match_size=2,additional_costs=None):
             costs[i][j] = round(costs[i][j],1)
             #print('    ',costs[i][j],team_info[j][0])
         print(*[costs[i][j] for j in range(len(costs[i]))])
-       
+    
+    print ('Ratings, for pasting into spreadsheet')
     for i in range(len(team_info)):
         if (teams_playing[i]):
             print (team_info[i][0],',',int(teams[i].mu))
@@ -422,86 +457,34 @@ def setup_ladder(team_info,previous_matches,match_size=2,additional_costs=None):
                 costs[k].pop(j)
             costs.pop(j)
         
-    print(len(team_info),len(costs))
+    #print(len(team_info),len(costs))
     
     
     results = best_matchups([i for i in range(len(team_info))],costs,match_size,quiet=True)
     
-    print ('Next round of matches:')
+    print ('Next round of matches: (formatted for pasting into spreadsheet)')
     costt = 0.0
     
     for r in results:
         print (*[team_info[i][0] for i in r[1]], sep = ", ,")
     
+    print ('Match costs:')
     for r in results:
         print(r[0])
         costt+=r[0]
     print('Total cost:',costt)
         
-             
-def calc_rating_change(score1,score2,rating1,rating2):
-    #####
-    #
-    # Win?  rating higher    get rating b   score factor        Net
-    # yes   yes                 -ive            +ive            small change
-    # yes   no                  +ive            +ive            big change
-    # no    yes                 -ive            -ive            big negative
-    # no    no                  +ive            -ive
-    
-    # summary:
-    # if win: rating increase
-    # add amount based on negative of rating difference
-    # add amount based on score (negative if you lost) - equal to rating difference
-    
-    
-    win_bonus = 3 # amount your rating goes up (or down) if score higher than someone with a higher rating, or vice-versa
-    score_rating_change = 3.0 #multiply by the factor based on score difference
-    
-    add_to_score = 0.0
-    if min(score1,score2) < 1:
-        add_to_score = abs(min(score1,score2)) # add this to sure all scores positive
-    
-    # ratio of scores:
-    # 1.0 to 2.0, no benefit from beating by anything more than double
-    score_factor = min(2.0,(max(score1,score2)+add_to_score)/(min(score1,score2)+add_to_score)) # minimum value is 0.5
-    
-    
-    # rating factor - between 1.0 and 2.0
-    rating_factor = min(abs(rating1-rating2)/100.0,1.0)+1.0
-    
-    # your rating decreases by rating factor, increases by score factor
-    # so if your rating is half your opponents, but you score twice as much
-    
-    
-    
-    if rating1>rating2:
-        if score1<=score2:
-            return -win_bonus-int(score_rating_change*(score_factor+rating_factor)+0.5)
-        else:
-            return win_bonus+int(score_rating_change*(score_factor-rating_factor)+0.5)
-    elif rating1<rating2:
-        if score1>=score2:
-            return win_bonus+int(score_rating_change*(score_factor+rating_factor)+0.5)
-        else:
-            return -win_bonus-int(score_rating_change*(score_factor-rating_factor)+0.5)
-    else:
-        if score1>score2:
-            return win_bonus+int(score_rating_change*(score_factor)+0.5)
-        elif score1<score2:
-            return -win_bonus-int(score_rating_change*(score_factor)+0.5)
-    
-    return 0
 
 
 def trial_run():
     team_info = [
         
-    ['team0name',1000,1000],
-    ['team1name',1000,1000],
-    ['team2name',1000,1000],
-    ['team3name',1000,1000],
-    ['team4name',1000,1000],
-    ['team5name',1000,1000],
+    ['team0name',1500,100,True],
+    ['team1name',1500,100,True],
+    ['team2name',1500,100,True],
+    ['team3name',1500,100,True],
+    ['team4name',1500,100,True],
+    ['team5name',1500,100,True],
                      
                 ]
                 
@@ -513,7 +496,7 @@ def trial_run():
 
                         ]
     
-    setup_ladder(team_info,previous_matches,3)
+    setup_ladder(team_info,previous_matches,match_size=3)
     
 
 def glicko_test():
@@ -522,13 +505,9 @@ def glicko_test():
     r2 = env.create_rating(1400, 30)
     r3 = env.create_rating(1550, 100)
     r4 = env.create_rating(1700, 300)
-    print (r1)
-    print (r2)
+    
     
     rated = env.rate(r1, [(WIN, r2), (LOSS, r3), (LOSS, r4)])
-
-    print (r1)
-    print (r2)
     
     print ('RATED:')
     
@@ -539,8 +518,19 @@ def glicko_test():
     
 if __name__ == '__main__':
     
+    test_matchups(nteams=18,match_size=2)
+    # Time taken:
+    # 16,2 = 2 seconds
+    # 18,2 = 
+    # 15,3 = 6 seconds
+    # 16,4 = 30 seconds
+    # 18,3 = 500 seconds (240 million combinations tested)
+    
     #test_matchups_triple()
-        
+    
+    # for some reason (probably to do with the generator function all_matchups)
+    # only one test works at a time - so the trial_run will only work if 
+    # test_matchups_triple() is NOT called:
     #trial_run()
     
     glicko_test()

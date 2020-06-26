@@ -516,5 +516,8 @@ if __name__ == '__main__':
     
     #test_matchups_quad()
     
+    
+    # can only run a test OR a trial_run, something to do with generator function?
+    
     trial_run()
     
