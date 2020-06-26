@@ -7,6 +7,6 @@ venv/
 #Cache Files
 __pycache__/
 
-# misc?
+# Files with team information
 tournament_test.py
-
+tournament_test_glicko.py
